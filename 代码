@@ -1,0 +1,71 @@
+import json
+import random
+import cv2
+import os
+import paddlex as pdx
+from paddlex import transforms as T
+
+# 数据加载部分
+data_js = json.load(open('/kaggle/input/train.json'))
+data_anno = data_js['annotations']
+data_len = len(data_anno)
+
+# 获取标签类别
+classes = []
+for i in range(data_len):
+    classes.append(data_anno[i]['label'])
+classes = set(classes)
+
+# 建立标签和数字的对应关系
+pre_define_categories = {}
+for i, cls in enumerate(classes):
+    pre_define_categories[cls] = i + 1
+
+# keys test
+root_path = '.'  # 当前目录作为根目录，可根据实际调整
+image_path = '/kaggle/input/train_images'
+img = cv2.imread(os.path.join(image_path, data_anno[0]['filename'][13:]))
+height, width, _ = img.shape
+
+# 写入（这部分代码可能不需要，因为你已经有明确的标注文件，但为了保持代码结构完整保留，你可以根据实际情况删除）
+json_dict_train = {"info": ['none'], "license": ['none'], "images": [], "annotations": [], "categories": []}
+json_dict_val = {"info": ['none'], "license": ['none'], "images": [], "annotations": [], "categories": []}
+categories = pre_define_categories.copy()
+bnd_id = 1
+
+# categories信息（这部分代码可能不需要，因为你已经有明确的标注文件，但为了保持代码结构完整保留，你可以根据实际情况删除）
+for i, cls in enumerate(classes, 1):
+    json_dict_train['categories'].append({'id': i, 'name': cls, 'supercategory': 'mark'})
+    json_dict_val['categories'].append({'id': i, 'name': cls, 'supercategory': 'mark'})
+
+# image信息（这部分代码可能不需要，因为你已经有明确的标注文件，但为了保持代码结构完整保留，你可以根据实际情况删除）
+train_id = 1
+val_id = 1
+val_img_id = 1
+train_img_id = 1
+for i in range(data_len):
+    if data_anno[i]['box']['xmin'] == None:
+        continue
+    x_min = float(data_anno[i]['box']['xmin'])
+    y_min = float(data_anno[i]['box']['ymin'])
+    x_max = float(data_anno[i]['box']['xmax'])
+    y_max = float(data_anno[i]['box']['ymax'])
+    cls = data_anno[i]['label']
+    cls_id = int(pre_define_categories[cls])
+    box_width = max(0.0, x_max - x_min)
+    box_height = max(0.0, y_max - y_min)
+    filename = data_anno[i]['filename'][13:]
+    img = cv2.imread(os.path.join(image_path, data_anno[i]['filename'][13:]))
+    height, width, _ = img.shape
+    ran = random.randint(1, 10)
+    if train_img_id > 1 and filename == json_dict_train["images"][train_img_id - 2]["file_name"]:
+        json_dict_train['annotations'].append(
+            {'area': box_width * box_height, 'bbox': [x_min, y_min, box_width, box_height], 'category_id': cls_id,
+             'id': train_id,
+             'image_id': train_img_id - 1, 'iscrowd': 0,
+             'segmentation': [[x_min, y_min, x_max, y_min, x_max, y_max, x_min, y_max]]})
+        train_id += 1
+        continue
+    if val_img_id > 1 and filename == json_dict_val["images"][val_img_id - 2]["file_name"]:
+        json_dict_val['annotations'].append(
+            {'area': box_width * box_height, 'bbox': [x_min, y
