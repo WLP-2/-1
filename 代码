@@ -1,48 +1,46 @@
+#解压数据集
+#创建解压目录
+!mkdir /home/aistudio/dataset
+#解压
+!unzip -d /home/aistudio/dataset -q /home/aistudio/data/data143958/train_dataset.zip
+!unzip -d /home/aistudio/dataset -q /home/aistudio/data/data143958/test_dataset.zip
+
 import json
 import random
 import cv2
 import os
-import paddlex as pdx
-from paddlex import transforms as T
 
-# 数据加载部分
-data_js = json.load(open('/kaggle/input/train.json'))
+data_js = json.load(open('/home/aistudio/dataset/train.json'))
 data_anno = data_js['annotations']
 data_len = len(data_anno)
-
 # 获取标签类别
 classes = []
 for i in range(data_len):
     classes.append(data_anno[i]['label'])
 classes = set(classes)
-
 # 建立标签和数字的对应关系
 pre_define_categories = {}
 for i, cls in enumerate(classes):
     pre_define_categories[cls] = i + 1
-
 # keys test
-root_path = '.'  # 当前目录作为根目录，可根据实际调整
-image_path = '/kaggle/input/train_images'
+root_path = '/home/aistudio/dataset/'
+image_path='/home/aistudio/dataset/train_images'
 img = cv2.imread(os.path.join(image_path, data_anno[0]['filename'][13:]))
 height, width, _ = img.shape
-
-# 写入（这部分代码可能不需要，因为你已经有明确的标注文件，但为了保持代码结构完整保留，你可以根据实际情况删除）
+# 写入
 json_dict_train = {"info": ['none'], "license": ['none'], "images": [], "annotations": [], "categories": []}
 json_dict_val = {"info": ['none'], "license": ['none'], "images": [], "annotations": [], "categories": []}
 categories = pre_define_categories.copy()
 bnd_id = 1
-
-# categories信息（这部分代码可能不需要，因为你已经有明确的标注文件，但为了保持代码结构完整保留，你可以根据实际情况删除）
+# categories信息
 for i, cls in enumerate(classes, 1):
     json_dict_train['categories'].append({'id': i, 'name': cls, 'supercategory': 'mark'})
     json_dict_val['categories'].append({'id': i, 'name': cls, 'supercategory': 'mark'})
-
-# image信息（这部分代码可能不需要，因为你已经有明确的标注文件，但为了保持代码结构完整保留，你可以根据实际情况删除）
-train_id = 1
-val_id = 1
-val_img_id = 1
-train_img_id = 1
+# image信息
+train_id=1
+val_id=1
+val_img_id=1
+train_img_id=1
 for i in range(data_len):
     if data_anno[i]['box']['xmin'] == None:
         continue
@@ -50,22 +48,138 @@ for i in range(data_len):
     y_min = float(data_anno[i]['box']['ymin'])
     x_max = float(data_anno[i]['box']['xmax'])
     y_max = float(data_anno[i]['box']['ymax'])
-    cls = data_anno[i]['label']
-    cls_id = int(pre_define_categories[cls])
-    box_width = max(0.0, x_max - x_min)
-    box_height = max(0.0, y_max - y_min)
+    cls=data_anno[i]['label']
+    cls_id=int(pre_define_categories[cls])
+    box_width = max(0.0,x_max-x_min)
+    box_height = max(0.0,y_max-y_min)
     filename = data_anno[i]['filename'][13:]
     img = cv2.imread(os.path.join(image_path, data_anno[i]['filename'][13:]))
     height, width, _ = img.shape
-    ran = random.randint(1, 10)
-    if train_img_id > 1 and filename == json_dict_train["images"][train_img_id - 2]["file_name"]:
+    ran=random.randint(1,10)
+    if train_img_id >1 and filename == json_dict_train["images"][train_img_id-2]["file_name"]:
         json_dict_train['annotations'].append(
             {'area': box_width * box_height, 'bbox': [x_min, y_min, box_width, box_height], 'category_id': cls_id,
              'id': train_id,
-             'image_id': train_img_id - 1, 'iscrowd': 0,
+             'image_id': train_img_id-1, 'iscrowd': 0,
              'segmentation': [[x_min, y_min, x_max, y_min, x_max, y_max, x_min, y_max]]})
         train_id += 1
         continue
-    if val_img_id > 1 and filename == json_dict_val["images"][val_img_id - 2]["file_name"]:
+    if val_img_id>1 and filename==json_dict_val["images"][val_img_id-2]["file_name"]:
         json_dict_val['annotations'].append(
-            {'area': box_width * box_height, 'bbox': [x_min, y
+            {'area': box_width * box_height, 'bbox': [x_min, y_min, box_width, box_height], 'category_id': cls_id,
+             'id': val_id,
+             'image_id': val_img_id-1, 'iscrowd': 0,
+             'segmentation': [[x_min, y_min, x_max, y_min, x_max, y_max, x_min, y_max]]})
+        val_id += 1
+        continue
+    if ran>=1 and ran<=8:
+        if train_img_id==1:
+            json_dict_train["images"].append({'file_name': filename, 'id': train_img_id, 'width': width, 'height': height})
+            train_img_id+=1
+        if train_img_id>1 and filename!=json_dict_train["images"][train_img_id-2]["file_name"]:
+            json_dict_train["images"].append({'file_name': filename, 'id': train_img_id, 'width': width, 'height': height})
+            train_img_id+=1
+        json_dict_train['annotations'].append(
+            {'area': box_width * box_height, 'bbox': [x_min, y_min, box_width, box_height], 'category_id': cls_id, 'id': train_id,
+             'image_id': train_img_id-1, 'iscrowd': 0,
+             'segmentation': [[x_min, y_min, x_max, y_min, x_max, y_max, x_min, y_max]]})
+        train_id += 1
+    if ran>=9 and ran<=10:
+        if val_img_id==1:
+            json_dict_val["images"].append({'file_name': filename, 'id': val_img_id, 'width': width, 'height': height})
+            val_img_id+=1
+        if val_img_id>1 and filename!=json_dict_val["images"][val_img_id-2]["file_name"]:
+            json_dict_val["images"].append({'file_name': filename, 'id': val_img_id, 'width': width, 'height': height})
+            val_img_id+=1
+        json_dict_val['annotations'].append(
+            {'area': box_width * box_height, 'bbox': [x_min, y_min, box_width, box_height], 'category_id': cls_id, 'id': val_id,
+             'image_id': val_img_id-1, 'iscrowd': 0,
+             'segmentation': [[x_min, y_min, x_max, y_min, x_max, y_max, x_min, y_max]]})
+        val_id += 1
+#保存结果的文件夹
+# 保存结果的文件夹
+folder = os.path.join(root_path, 'annotations')
+if not os.path.exists(folder):
+  os.makedirs(folder)
+json_name = os.path.join(root_path, 'annotations/{}.json'.format('train'))
+with open(json_name, 'w') as f:
+  json.dump(json_dict_train, f)
+json_name = os.path.join(root_path, 'annotations/{}.json'.format('val'))
+with open(json_name, 'w') as f:
+  json.dump(json_dict_val, f)
+print("数据集转换完成")
+
+import os
+# 指定显卡号
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+
+import paddlex as pdx
+from paddlex import transforms as T
+
+#模型训练
+train_transforms = T.Compose([
+    T.MixupImage(mixup_epoch=250), 
+    T.RandomDistort(),
+    T.RandomExpand(im_padding_value=[123.675, 116.28, 103.53]),
+    T.RandomCrop(),
+    T.RandomHorizontalFlip(), 
+    T.BatchRandomResize(
+    target_sizes=[320, 352, 384, 416, 448, 480, 512, 544, 576, 608],
+    interp='RANDOM'), 
+    T.Normalize(
+        mean=[0.485, 0.456, 0.406], 
+        std=[0.229, 0.224, 0.225]
+    )
+])
+ 
+eval_transforms = T.Compose([
+    T.Resize(608, interp='CUBIC'), 
+    T.Normalize(
+        mean=[0.485, 0.456, 0.406], 
+        std=[0.229, 0.224, 0.225]
+    )
+])
+
+train_dataset = pdx.datasets.CocoDetection(
+    data_dir='dataset/train_images',
+    ann_file='dataset/annotations/train.json',
+    transforms=train_transforms,
+    shuffle=True)
+eval_dataset = pdx.datasets.CocoDetection(
+    data_dir='dataset/train_images',
+    ann_file='dataset/annotations/val.json',
+    transforms=eval_transforms,
+    shuffle=False)
+
+num_classes = len(train_dataset.labels)
+print(num_classes)
+model=pdx.det.YOLOv3(num_classes=num_classes,backbone='DarkNet53')
+
+model = pdx.load_model("output/HumanAndCar/best_model")
+
+# API说明：https://github.com/PaddlePaddle/PaddleX/blob/develop/docs/apis/models/instance_segmentation.md
+# 各参数介绍与调整说明：https://github.com/PaddlePaddle/PaddleX/blob/develop/docs/parameters.md
+model.train(
+    num_epochs=100,
+    train_batch_size=20,
+    learning_rate=0.0005,
+    train_dataset=train_dataset,
+    eval_dataset=eval_dataset,
+    #lr_decay_epochs=[80, 120, 160],
+    #resume_checkpoint='output/HumanAndCar/best_model',
+    pretrain_weights=None,
+    #warmup_steps=10,
+    #warmup_start_lr=0.0,
+    save_dir='output/HumanAndCar')
+
+
+#模型加载
+model = pdx.load_model("output/HumanAndCar/best_model")
+
+#结果预测（改变文件名查看不同图片预测结果）
+image_name = 'dataset/test_images/00077.jpg'
+result = model.predict(image_name)
+pdx.det.visualize(image_name,result,threshold=0.3,save_dir='output/HumanAndCar/show')
+
+!cp dataset/test_images/00077.jpg output/HumanAndCar/show
+#生成json
