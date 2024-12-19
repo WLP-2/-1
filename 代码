@@ -1,46 +1,105 @@
-#解压数据集
-#创建解压目录
-!mkdir /home/aistudio/dataset
-#解压
-!unzip -d /home/aistudio/dataset -q /home/aistudio/data/data143958/train_dataset.zip
-!unzip -d /home/aistudio/dataset -q /home/aistudio/data/data143958/test_dataset.zip
+#将训练数据集train_dataset.zip和测试数据集test_dataset.zip解压到./dataset文件夹下
+!unzip -oq /home/aistudio/data/data143958/test_dataset.zip -d ./dataset
+!unzip -oq /home/aistudio/data/data143958/train_dataset.zip -d ./dataset
+
+In [ ]
+import json
+import os
+import matplotlib.pyplot as plt
+data_js=json.load(open('./dataset/train.json'))
+data_anno=data_js['annotations']
+data_len=len(data_anno)
+#定义classes序列用于暂时存放标签
+classes=[]
+for i in range(data_len):
+    classes.append(data_anno[i]['label'])#删除重复的标签
+classes = set(classes)#label序列存放最终的标签
+label=[]
+for i in classes:
+    label.append(i)#统计不同标签的标注个数
+total=0
+count=[0 for i in range(22)]
+class_num={}
+for i, cls in enumerate(classes):
+    class_num[cls] = 0# 建立标签和数字的对应关系
+categories = {}
+for i, cls in enumerate(classes):
+    categories[cls] = i
+    for i in range(data_len):
+        total += 1
+    mark_id=categories[data_anno[i]['label']]
+    count[mark_id] +=1
+    class_num[data_anno[i]['label']] += 1
+
+fig, ax = plt.subplots()
+b = ax.barh(range(len(label)), count, color='#6699CC')
+#为横向水平的柱图右侧添加数据标签。
+for rect in b:
+    w = rect.get_width()
+    ax.text(w, rect.get_y()+rect.get_height()/2, '%d' %
+            int(w), ha='left', va='center')
+#设置Y轴纵坐标上的刻度线标签。
+ax.set_yticks(range(len(label)))
+ax.set_yticklabels(label,color='green')#不要X横坐标上的label标签。
+plt.xticks(())
+plt.show()
+print("全部标注信息数量：",total)
+print("各类标签的数量分别为:")
+for key in class_num.keys():
+    print(key,":",class_num[key])
+
+
 
 import json
 import random
 import cv2
 import os
 
+# 打开并读取训练集标注文件（/home/aistudio/dataset/train.json），将其解析为Python对象
 data_js = json.load(open('/home/aistudio/dataset/train.json'))
+# 获取标注信息中的 'annotations' 部分
 data_anno = data_js['annotations']
+# 获取标注信息的长度，即标注的数量
 data_len = len(data_anno)
+
 # 获取标签类别
 classes = []
 for i in range(data_len):
+    # 将每个标注的 'label' 添加到 classes 列表中
     classes.append(data_anno[i]['label'])
+# 将 classes 列表转换为集合，去除重复的标签类别
 classes = set(classes)
+
 # 建立标签和数字的对应关系
 pre_define_categories = {}
 for i, cls in enumerate(classes):
+    # 从 1 开始为每个标签类别分配一个数字 ID
     pre_define_categories[cls] = i + 1
-# keys test
+
+# keys test（此处代码功能不太明确，可能是用于测试或其他辅助操作，暂不详细解释）
 root_path = '/home/aistudio/dataset/'
-image_path='/home/aistudio/dataset/train_images'
+image_path = '/home/aistudio/dataset/train_images'
+# 读取训练集中第一张图像（用于获取图像尺寸信息等，这里只读取了第一张图像的部分信息）
 img = cv2.imread(os.path.join(image_path, data_anno[0]['filename'][13:]))
 height, width, _ = img.shape
+
 # 写入
 json_dict_train = {"info": ['none'], "license": ['none'], "images": [], "annotations": [], "categories": []}
 json_dict_val = {"info": ['none'], "license": ['none'], "images": [], "annotations": [], "categories": []}
 categories = pre_define_categories.copy()
 bnd_id = 1
+
 # categories信息
 for i, cls in enumerate(classes, 1):
+    # 将类别信息添加到训练集和验证集的标注字典中，包括类别 ID、名称和超类别（这里都设置为'mark'）
     json_dict_train['categories'].append({'id': i, 'name': cls, 'supercategory': 'mark'})
     json_dict_val['categories'].append({'id': i, 'name': cls, 'supercategory': 'mark'})
+
 # image信息
-train_id=1
-val_id=1
-val_img_id=1
-train_img_id=1
+train_id = 1
+val_id = 1
+val_img_id = 1
+train_img_id = 1
 for i in range(data_len):
     if data_anno[i]['box']['xmin'] == None:
         continue
@@ -48,138 +107,204 @@ for i in range(data_len):
     y_min = float(data_anno[i]['box']['ymin'])
     x_max = float(data_anno[i]['box']['xmax'])
     y_max = float(data_anno[i]['box']['ymax'])
-    cls=data_anno[i]['label']
-    cls_id=int(pre_define_categories[cls])
-    box_width = max(0.0,x_max-x_min)
-    box_height = max(0.0,y_max-y_min)
+    cls = data_anno[i]['label']
+    cls_id = int(pre_define_categories[cls])
+    box_width = max(0.0, x_max - x_min)
+    box_height = max(0.0, y_max - y_min)
     filename = data_anno[i]['filename'][13:]
     img = cv2.imread(os.path.join(image_path, data_anno[i]['filename'][13:]))
     height, width, _ = img.shape
-    ran=random.randint(1,10)
-    if train_img_id >1 and filename == json_dict_train["images"][train_img_id-2]["file_name"]:
+    ran = random.randint(1, 10)
+    if train_img_id > 1 and filename == json_dict_train["images"][train_img_id - 2]["file_name"]:
         json_dict_train['annotations'].append(
             {'area': box_width * box_height, 'bbox': [x_min, y_min, box_width, box_height], 'category_id': cls_id,
              'id': train_id,
-             'image_id': train_img_id-1, 'iscrowd': 0,
+             'image_id': train_img_id - 1, 'iscrowd': 0,
              'segmentation': [[x_min, y_min, x_max, y_min, x_max, y_max, x_min, y_max]]})
         train_id += 1
         continue
-    if val_img_id>1 and filename==json_dict_val["images"][val_img_id-2]["file_name"]:
+    if val_img_id > 1 and filename == json_dict_val["images"][val_img_id - 2]["file_name"]:
         json_dict_val['annotations'].append(
             {'area': box_width * box_height, 'bbox': [x_min, y_min, box_width, box_height], 'category_id': cls_id,
              'id': val_id,
-             'image_id': val_img_id-1, 'iscrowd': 0,
+             'image_id': val_img_id - 1, 'iscrowd': 0,
              'segmentation': [[x_min, y_min, x_max, y_min, x_max, y_max, x_min, y_max]]})
         val_id += 1
         continue
-    if ran>=1 and ran<=8:
-        if train_img_id==1:
+    if ran >= 1 and ran <= 8:
+        if train_img_id == 1:
             json_dict_train["images"].append({'file_name': filename, 'id': train_img_id, 'width': width, 'height': height})
-            train_img_id+=1
-        if train_img_id>1 and filename!=json_dict_train["images"][train_img_id-2]["file_name"]:
+            train_img_id += 1
+        if train_img_id > 1 and filename!= json_dict_train["images"][train_img_id - 2]["file_name"]:
             json_dict_train["images"].append({'file_name': filename, 'id': train_img_id, 'width': width, 'height': height})
-            train_img_id+=1
+            train_img_id += 1
         json_dict_train['annotations'].append(
             {'area': box_width * box_height, 'bbox': [x_min, y_min, box_width, box_height], 'category_id': cls_id, 'id': train_id,
-             'image_id': train_img_id-1, 'iscrowd': 0,
+             'image_id': train_img_id - 1, 'iscrowd': 0,
              'segmentation': [[x_min, y_min, x_max, y_min, x_max, y_max, x_min, y_max]]})
         train_id += 1
-    if ran>=9 and ran<=10:
-        if val_img_id==1:
+    if ran >= 9 and ran <= 10:
+        if val_img_id == 1:
             json_dict_val["images"].append({'file_name': filename, 'id': val_img_id, 'width': width, 'height': height})
-            val_img_id+=1
-        if val_img_id>1 and filename!=json_dict_val["images"][val_img_id-2]["file_name"]:
+            val_img_id += 1
+        if val_img_id > 1 and filename!= json_dict_val["images"][val_img_id - 2]["file_name"]:
             json_dict_val["images"].append({'file_name': filename, 'id': val_img_id, 'width': width, 'height': height})
-            val_img_id+=1
+            val_img_id += 1
         json_dict_val['annotations'].append(
             {'area': box_width * box_height, 'bbox': [x_min, y_min, box_width, box_height], 'category_id': cls_id, 'id': val_id,
-             'image_id': val_img_id-1, 'iscrowd': 0,
+             'image_id': val_img_id - 1, 'iscrowd': 0,
              'segmentation': [[x_min, y_min, x_max, y_min, x_max, y_max, x_min, y_max]]})
         val_id += 1
-#保存结果的文件夹
+
 # 保存结果的文件夹
 folder = os.path.join(root_path, 'annotations')
 if not os.path.exists(folder):
-  os.makedirs(folder)
+    os.makedirs(folder)
 json_name = os.path.join(root_path, 'annotations/{}.json'.format('train'))
 with open(json_name, 'w') as f:
-  json.dump(json_dict_train, f)
+    json.dump(json_dict_train, f)
 json_name = os.path.join(root_path, 'annotations/{}.json'.format('val'))
 with open(json_name, 'w') as f:
-  json.dump(json_dict_val, f)
+    json.dump(json_dict_val, f)
 print("数据集转换完成")
 
+
+
+#a、安装PaddleDetection组件
+%cd /home/aistudio/PaddleDetection/
+!pip install -r requirements.txt #安装paddledet
+!python setup.py install
+
+#b、训练模型
+#训练模型
+%cd ~
+%cd PaddleDetection
+!python tools/train.py -c ../ppyoloe_crn_x_300e_coco.yml --eval
+
+#a、导入PaddleX包
+In[ ]
+!pip
+install
+paddlex == 2.0
+.0 - i
+https: // mirror.baidu.com / pypi / simple
+
 import os
-# 指定显卡号
+# 指定显卡号为 0，假设使用 GPU 进行训练（如果系统中有多个 GPU，通过设置此环境变量可以指定使用哪个 GPU）
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 import paddlex as pdx
 from paddlex import transforms as T
 
-#模型训练
+# 定义训练集的数据增强操作
 train_transforms = T.Compose([
-    T.MixupImage(mixup_epoch=250), 
+    # 在训练的前 250 个 epoch 中进行图像混合操作，增加数据多样性
+    T.MixupImage(mixup_epoch=250),
+    # 对图像进行随机扭曲，包括亮度、对比度、饱和度和色调的随机变化
     T.RandomDistort(),
+    # 随机扩展图像边界，用指定的填充值填充扩展区域
     T.RandomExpand(im_padding_value=[123.675, 116.28, 103.53]),
+    # 随机裁剪图像，裁剪后的图像大小随机
     T.RandomCrop(),
-    T.RandomHorizontalFlip(), 
+    # 随机水平翻转图像，增加数据的对称性
+    T.RandomHorizontalFlip(),
+    # 对图像进行批量随机缩放，目标尺寸从给定的列表中随机选择，缩放方式为随机
     T.BatchRandomResize(
-    target_sizes=[320, 352, 384, 416, 448, 480, 512, 544, 576, 608],
-    interp='RANDOM'), 
+        target_sizes=[320, 352, 384, 416, 448, 480, 512, 544, 576, 608],
+        interp='RANDOM'),
+    # 对图像进行归一化处理，使图像数据符合特定的均值和标准差
     T.Normalize(
-        mean=[0.485, 0.456, 0.406], 
-        std=[0.229, 0.224, 0.225]
-    )
-])
- 
-eval_transforms = T.Compose([
-    T.Resize(608, interp='CUBIC'), 
-    T.Normalize(
-        mean=[0.485, 0.456, 0.406], 
+        mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225]
     )
 ])
 
+# 定义验证集的数据预处理操作（主要是缩放和归一化）
+eval_transforms = T.Compose([
+    # 将图像缩放为 608x608 大小，缩放方式为立方插值
+    T.Resize(608, interp='CUBIC'),
+    # 对图像进行归一化处理
+    T.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225]
+    )
+])
+
+# 加载训练集，使用 CocoDetection 格式，指定数据目录、标注文件路径、数据增强操作和是否打乱顺序
 train_dataset = pdx.datasets.CocoDetection(
     data_dir='dataset/train_images',
     ann_file='dataset/annotations/train.json',
     transforms=train_transforms,
     shuffle=True)
+# 加载验证集，使用 CocoDetection 格式，指定数据目录、标注文件路径、数据预处理操作和是否打乱顺序（这里不打乱）
 eval_dataset = pdx.datasets.CocoDetection(
     data_dir='dataset/train_images',
     ann_file='dataset/annotations/val.json',
     transforms=eval_transforms,
     shuffle=False)
 
+# 获取训练集中的类别数量
 num_classes = len(train_dataset.labels)
 print(num_classes)
-model=pdx.det.YOLOv3(num_classes=num_classes,backbone='DarkNet53')
+# 创建 YOLOv3 模型，指定类别数量和骨干网络为 DarkNet53
+model = pdx.det.YOLOv3(num_classes=num_classes, backbone='DarkNet53')
 
+# 加载预训练模型（如果存在 output/HumanAndCar/best_model 路径下的模型文件）
 model = pdx.load_model("output/HumanAndCar/best_model")
 
-# API说明：https://github.com/PaddlePaddle/PaddleX/blob/develop/docs/apis/models/instance_segmentation.md
-# 各参数介绍与调整说明：https://github.com/PaddlePaddle/PaddleX/blob/develop/docs/parameters.md
+# 训练模型
 model.train(
-    num_epochs=100,
-    train_batch_size=20,
-    learning_rate=0.0005,
-    train_dataset=train_dataset,
-    eval_dataset=eval_dataset,
-    #lr_decay_epochs=[80, 120, 160],
-    #resume_checkpoint='output/HumanAndCar/best_model',
-    pretrain_weights=None,
-    #warmup_steps=10,
-    #warmup_start_lr=0.0,
-    save_dir='output/HumanAndCar')
+    num_epochs=100,  # 训练轮数为 100
+    train_batch_size=20,  # 训练批次大小为 20
+    learning_rate=0.0005,  # 学习率为 0.0005
+    train_dataset=train_dataset,  # 训练数据集
+    eval_dataset=eval_dataset,  # 验证数据集
+    pretrain_weights=None,  # 不使用预训练权重（可根据需要指定预训练权重路径）
+    save_dir='output/HumanAndCar'  # 保存训练模型的目录
+)
+
+!rm -rf output/HumanAndCar/epoch_*
+
+
+
+#PaddleDetection组件方式预测
+%cd ~
+%cd PaddleDetection
+!python tools/infer.py -c ../ppyoloe_crn_x_300e_coco.yml \
+--infer_img=/home/aistudio/dataset/test_images/00192.jpg \
+--output_dir=/home/aistudio/infer_output/ \
+--draw_threshold=0.5 \
+-o weights=/home/aistudio/PaddleDetection/output/ppyoloe_crn_x_300e_coco/best_model.pdparams \
+ --use_vdl=Ture
+
+
+import matplotlib.pyplot as plt # plt 用于显示图片
+import matplotlib.image as mpimg # mpimg 用于读取图片
+import numpy as np
+lena = mpimg.imread('/home/aistudio/infer_output/00192.jpg') # 读取和代码处于同一目录下的 lena.png# 此时 lena 就已经是一个 np.array 了，可以对它进行任意处理
+lena.shape #(512, 512, 3)
+plt.imshow(lena) # 显示图片
+plt.axis('off') # 不显示坐标轴
+plt.show()
+
 
 
 #模型加载
 model = pdx.load_model("output/HumanAndCar/best_model")
 
-#结果预测（改变文件名查看不同图片预测结果）
+# 结果预测（改变文件名查看不同图片预测结果）
 image_name = 'dataset/test_images/00077.jpg'
 result = model.predict(image_name)
-pdx.det.visualize(image_name,result,threshold=0.3,save_dir='output/HumanAndCar/show')
+# 使用 paddlex 的可视化函数将预测结果可视化，保存到 output/HumanAndCar/show 目录，阈值设置为 0.3
+pdx.det.visualize(image_name, result, threshold=0.3, save_dir='output/HumanAndCar/show')
 
+# 复制原始测试图像到 output/HumanAndCar/show 目录
 !cp dataset/test_images/00077.jpg output/HumanAndCar/show
-#生成json
+
+#保存模型
+%cd ~
+%cd PaddleDetection
+!python tools/export_model.py -c ../ppyoloe_crn_x_300e_coco.yml \
+-o weights=/home/aistudio/PaddleDetection/output/ppyoloe_crn_x_300e_coco/best_model.pdparams \
+TestReader.fuse_normalize=true
+
